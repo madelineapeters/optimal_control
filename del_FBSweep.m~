@@ -1,0 +1,150 @@
+function y = del_FBSweep(T,u_func,...
+    state1,state2,state3,adjoint1,adjoint2,adjoint3)
+global tau omega p B mu Pn
+%Forward_Backward_Sweep(x0,t,h,h2,u_func,state,adjoint,control,N) solves an
+%optimal control problem using the forward backward sweep. x0 is the
+%initial value for the state ODE. t,h,h2 are the time interval broken into
+%intervals with length h. h2 is half the mesh interval size. u_func is how
+%the FBS computes the control for each step. state,adjoitn, and control are
+%the equations related to the optimal control problem. N is the number of
+%mesh points in the interval.
+
+%intial error for while loop
+test = -1;
+
+%error bound
+delta = 0.01;
+N = 1000;
+m1 = 1*N/T; m2 = 2*N/T;
+t = linspace(-2,T+2,N+4*m1+1);
+
+%set up for control vector
+u = zeros(1,N+1+2*m2);
+umax = 1;
+
+%set up for the state vector
+R = zeros(1,N+1+2*m2);
+M = zeros(1,N+1+2*m2);
+G = zeros(1,N+1+2*m2);
+
+%intial state at time 0
+R(1,1:1+m2) = 8500000;
+M(1,1+m2) = 0;
+G(1,1+m2) = 0;
+
+%intial for the ajoint equation
+LR = zeros(1,N+1+2*m2);
+LM = zeros(1,N+1+2*m2);
+LG = zeros(1,N+1+2*m2);
+
+%forward backward sweep
+%while(test < 0)
+for k = 1:100
+    
+    %Saved old data for error computation to see if the stop criteria have
+    %been met.
+    oldu = u;
+    oldR = R; oldM = M; oldG = G;
+    oldLR = LR; oldLM = LM; oldLG = LG;
+    
+    %forward loop for the state    
+    [sol1] = del_runge_kutta_4(t,R,M,G,u,m1,m2,N,state1,state2,state3);
+    R = sol1(1,:);
+    M = sol1(2,:);
+    G = sol1(3,:);
+    
+    %backward loop for adjoint
+    [sol2] = del_back_runge_kutta_4(t,T,LR,LM,LG,R,M,u,m1,m2,N,adjoint1,adjoint2,adjoint3);
+    LR = sol2(1,:);
+    LM = sol2(2,:);
+    LG = sol2(3,:);
+
+    %construction of the control
+    u1 = zeros(1,N+1+2*m2);
+    for i=1+m2:N+m2+1
+        temp = xalpha(i,N+m2,m2)*LG(i+m2)*exp(-mu*m2) - xalpha(i,N+m2+1,m1)*LM(i+m1)*B*exp(-mu*m1);
+        if (temp < 0)
+            u1(i) = 0;
+        elseif (temp > 0)
+            u1(i) = umax;
+        elseif (temp == 0)
+            u1(i) = 0;
+        end
+    end
+    u = u_func(u1,oldu);
+   
+    %construction of the error for while loop
+    tempu= delta*sum(abs(u))-sum(abs(oldu-u));
+    tempR = delta*sum(abs(R))-sum(abs(oldR-R));
+    tempM = delta*sum(abs(M))-sum(abs(oldM-M));
+    tempG = delta*sum(abs(G))-sum(abs(oldG-G));
+    tempLR = delta*sum(abs(LR))-sum(abs(oldLR-LR));
+    tempLM = delta*sum(abs(LM))-sum(abs(oldLM-LM));
+    tempLG = delta*sum(abs(LG))-sum(abs(oldLG-LG));
+    test = min(tempu,min(tempR,min(tempM,min(tempG,min(tempLR,min(tempLM,tempLG))))));
+    disp(test)
+    %Iteration set
+    
+
+end
+
+t = linspace(-2,22,length(R));
+Im = zeros(1,length(R));
+Ig = zeros(1,length(R));
+for i = 1+m2:N+m2
+    Im(i+1) = (1-u(i))*p*R(i)*M(i)-mu*Im(i)-(1-u(i-m1))*p*R(i-m1)*M(i-m1)*exp(-mu*tau)-Pn*betapdf(t(i), 1, 1)*exp(-mu*t(i));
+    Ig(i+1) = u(i)*p*R(i)*M(i)-mu*Ig(i)-u(i-m2)*p*R(i-m2)*M(i-m2)*exp(-mu*omega);
+
+end
+
+disp(length(LR));
+disp(length(R));
+y(1,:) = linspace(-2,22,length(R));
+y(2,:) = R;
+y(3,:) = M;
+y(4,:) = G;
+y(5,:) = u;
+y(6,:) = LR;
+y(7,:) = LM;
+y(8,:) = LG;
+y(9,:) = Im;
+y(10,:) = Ig;
+
+t = linspace(-2,22,length(R));
+   
+%graph of data
+% State
+figure
+subplot(4,1,1)
+plot(t,R)
+xlabel('Time')
+ylabel('Cell density per uL')
+xlim([0 20])
+legend('Red blood cells')
+    
+% Control
+subplot(4,1,2)
+plot(t,M,t,G)
+xlabel('Time')
+ylabel('Density per uL')
+xlim([0 20])
+legend('Merozoites','Gametocytes')
+
+% Control
+subplot(4,1,3)
+plot(t,u)
+xlabel('Time')
+ylabel('Control')
+xlim([0 20])
+legend('Conversion rate')
+
+%Adjoint
+subplot(4,1,4)
+plot(t,LM,t,LG)
+xlabel('Time')
+ylabel('Adjoint')
+xlim([0 20])
+legend('M Adjoint','G Adjoint')
+
+
+end
