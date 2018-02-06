@@ -25,8 +25,8 @@ for j=1:N
     LM3 = ode2(t(:,i)-h2,T,d1,d2,LR(:,i)-h2*LR2,LM(:,i)-h2*LM2,LM(:,i+d1)-h2*LM2,LG(:,i+d2)-h2*LG2,(R(:,i)+R(:,i-1))/2,(M(:,i)+M(:,i-1))/2,(u(:,i)+u(:,i-1))/2); %c
     LG3 = ode3(LG(:,i)-h2*LG2); %c
     
-    LR4 = ode1(t(:,i)-h,T,d1,d2,LR(:,i)-h*LR3,LM(:,i)-h*LM3,LR(:,i+d1)-h*LM3,LG(:,i+d2)-h*LG3,R(:,i-1),M(:,i-1),u(:,i-1)); %c
-    LM4 = ode2(t(:,i)-h,T,d1,d2,LR(:,i)-h*LR3,LM(:,i)-h*LM3,LR(:,i+d1)-h*LM3,LG(:,i+d2)-h*LG3,R(:,i-1),M(:,i-1),u(:,i-1)); %c
+    LR4 = ode1(t(:,i)-h,T,d1,d2,LR(:,i)-h*LR3,LM(:,i)-h*LM3,LM(:,i+d1)-h*LM3,LG(:,i+d2)-h*LG3,R(:,i-1),M(:,i-1),u(:,i-1)); %c
+    LM4 = ode2(t(:,i)-h,T,d1,d2,LR(:,i)-h*LR3,LM(:,i)-h*LM3,LM(:,i+d1)-h*LM3,LG(:,i+d2)-h*LG3,R(:,i-1),M(:,i-1),u(:,i-1)); %c
     LG4 = ode3(LG(:,i)-h*LG3); %c
     
     LR(i-1)=LR(i)-(h/6)*(LR1+2*LR2+2*LR3+LR4);  %c
